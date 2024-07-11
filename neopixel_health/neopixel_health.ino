@@ -5,9 +5,11 @@
 
 Adafruit_NeoPixel strip(NEO_NUM, NEO_PIN, NEO_GRB + NEO_KHZ800);
 
-#define GAIN_HEALTH_COLOUR  strip.Color(0, 50, 0)
-#define GREEN_HEALTH_COLOUR strip.Color(0, 20, 0)
-#define RED_HEALTH_COLOUR   strip.Color(20, 0, 0)
+#define GREEN_HEALTH  20
+#define RED_HEALTH    20
+
+#define GREEN_HEALTH_COLOUR strip.Color(0, GREEN_HEALTH, 0)
+#define RED_HEALTH_COLOUR   strip.Color(RED_HEALTH, 0, 0)
 
 int health { 20 };
 
@@ -47,16 +49,22 @@ void start()
   }
 }
 
+#define LIFE_CHANGE_TIME 200
+
 void gain_health()
-{
-  for(int i { 0 }; i < health; ++i)
+{ 
+  for(int j { 0 }; j < LIFE_CHANGE_TIME; ++j)
   {
-    strip.setPixelColor(i, GAIN_HEALTH_COLOUR);
+    int gain_green = (GREEN_HEALTH * 3) * sin((PI * j) / LIFE_CHANGE_TIME) + GREEN_HEALTH;
+    for(int i { 0 }; i < health; ++i)
+    {
+      strip.setPixelColor(i, strip.Color(0, gain_green, 0));
+    }
+    if(j == LIFE_CHANGE_TIME / 2) ++health;
+    strip.show();
+    delay(1);
   }
 
-  strip.show();
-  delay(300);
-  ++health;
   strip.clear();
 
   for(int i { 0 }; i < health; ++i)
@@ -74,7 +82,7 @@ void take_damage()
   }
 
   strip.show();
-  delay(300);
+  delay(LIFE_CHANGE_TIME);
   --health;
   strip.clear();
 
