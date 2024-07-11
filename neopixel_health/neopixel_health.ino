@@ -15,6 +15,7 @@ int health { 20 };
 
 void setup() 
 {
+  Serial.begin(115200);
   strip.begin();
   strip.show();
 
@@ -49,13 +50,13 @@ void start()
   }
 }
 
-#define LIFE_CHANGE_TIME 200
+#define LIFE_CHANGE_TIME 100
 
 void gain_health()
 { 
   for(int j { 0 }; j < LIFE_CHANGE_TIME; ++j)
   {
-    int gain_green = (GREEN_HEALTH * 3) * sin((PI * j) / LIFE_CHANGE_TIME) + GREEN_HEALTH;
+    int gain_green { (GREEN_HEALTH * 3) * sin((PI * j) / LIFE_CHANGE_TIME) + GREEN_HEALTH };
     for(int i { 0 }; i < health; ++i)
     {
       strip.setPixelColor(i, strip.Color(0, gain_green, 0));
@@ -76,14 +77,24 @@ void gain_health()
 
 void take_damage()
 {
-  for(int i { 0 }; i < health; ++i)
+  for(int j { 0 }; j < LIFE_CHANGE_TIME; ++j)
   {
-    strip.setPixelColor(i, RED_HEALTH_COLOUR);
+    int damage_red { (RED_HEALTH * 3) * sin((PI * j) / LIFE_CHANGE_TIME) };
+    double expon { 2.0 / 3.0 };
+    int green { GREEN_HEALTH - pow(damage_red, expon)};
+
+    for(int i { 0 }; i < health; ++i)
+    {
+      strip.setPixelColor(i, strip.Color(damage_red, max(green, 0), 0));
+    }
+    if(j == LIFE_CHANGE_TIME / 2) 
+    {
+      --health;
+    }
+    strip.show();
+    delay(1);
   }
 
-  strip.show();
-  delay(LIFE_CHANGE_TIME);
-  --health;
   strip.clear();
 
   for(int i { 0 }; i < health; ++i)
