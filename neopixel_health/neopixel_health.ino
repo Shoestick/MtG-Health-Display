@@ -5,6 +5,7 @@
 
 Adafruit_NeoPixel strip(NEO_NUM, NEO_PIN, NEO_GRB + NEO_KHZ800);
 
+#define GAIN_HEALTH_COLOUR  strip.Color(0, 50, 0)
 #define GREEN_HEALTH_COLOUR strip.Color(0, 20, 0)
 #define RED_HEALTH_COLOUR   strip.Color(20, 0, 0)
 
@@ -20,11 +21,18 @@ void setup()
 
 int currentMillis { millis() };
 
+bool flip { 1 };
+
 void loop() 
 {
   if(currentMillis + 3000 < millis())
   {
-    take_damage();
+    if( flip )
+      take_damage();
+    else
+      gain_health();
+
+    flip = !flip;
     currentMillis = millis();
   }
 }
@@ -37,6 +45,25 @@ void start()
     strip.show();
     delay(20);
   }
+}
+
+void gain_health()
+{
+  for(int i { 0 }; i < health; ++i)
+  {
+    strip.setPixelColor(i, GAIN_HEALTH_COLOUR);
+  }
+
+  strip.show();
+  delay(300);
+  ++health;
+  strip.clear();
+
+  for(int i { 0 }; i < health; ++i)
+  {
+    strip.setPixelColor(i, GREEN_HEALTH_COLOUR);
+  }
+  strip.show();
 }
 
 void take_damage()
