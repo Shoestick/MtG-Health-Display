@@ -21,16 +21,13 @@ void setup()
 
 int currentMillis { millis() };
 
-bool flip { 1 };
+bool flip { 0 };
 
 void loop() 
 {
   if(currentMillis + 3000 < millis())
   {
-    if( flip )
-      take_damage();
-    else
-      gain_health();
+    change_life(flip);
 
     flip = !flip;
     currentMillis = millis();
@@ -47,35 +44,23 @@ void start()
   }
 }
 
-void gain_health()
+void change_life(bool gain)
 {
   for(int i { 0 }; i < health; ++i)
   {
-    strip.setPixelColor(i, GAIN_HEALTH_COLOUR);
+    if(gain)
+    {
+      strip.setPixelColor(i, GAIN_HEALTH_COLOUR);
+    }
+    else
+    {
+      strip.setPixelColor(i, RED_HEALTH_COLOUR);
+    }
   }
 
   strip.show();
   delay(300);
-  ++health;
-  strip.clear();
-
-  for(int i { 0 }; i < health; ++i)
-  {
-    strip.setPixelColor(i, GREEN_HEALTH_COLOUR);
-  }
-  strip.show();
-}
-
-void take_damage()
-{
-  for(int i { 0 }; i < health; ++i)
-  {
-    strip.setPixelColor(i, RED_HEALTH_COLOUR);
-  }
-
-  strip.show();
-  delay(300);
-  --health;
+  gain ? ++health : --health;
   strip.clear();
 
   for(int i { 0 }; i < health; ++i)
