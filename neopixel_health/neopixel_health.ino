@@ -1,3 +1,4 @@
+#include <Config.h>
 #include <Adafruit_NeoPixel.h>
 
 #define NEO_PIN 13

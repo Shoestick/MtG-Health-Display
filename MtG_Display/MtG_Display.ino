@@ -1,4 +1,4 @@
-#include "config.h"
+#include <Config.h>
 #include <TFT_eSPI.h>
 #include <SPI.h>
 #include <PubSubClient.h>
