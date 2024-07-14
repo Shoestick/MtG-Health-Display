@@ -1,7 +1,21 @@
+#include "config.h"
 #include <TFT_eSPI.h>
 #include <SPI.h>
+#include <PubSubClient.h>
+#include "WiFi.h"
 
 TFT_eSPI tft=TFT_eSPI();
+WiFiClient wifiClient;
+PubSubClient mqttClient(wifiClient);
+
+//#define WIFI_SSID
+//#define WIFI_PASSWORD
+
+//#define MQTT_BROKER
+//#define MQTT_BROKER_FQDN
+
+constexpr uint16_t port { 1883 };
+const char *topic = "mtg/health";
 
 void setup() 
 {
@@ -12,10 +26,42 @@ void setup()
 
   pinMode(0, INPUT_PULLUP);
   pinMode(35, INPUT_PULLUP);
+
+  //set mqtt
+  mqttClient.setServer(MQTT_BROKER_FQDN, port);
+
+  delay(1000);
+
+  //handle wifi connection
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  Serial.println("\nConnecting");
+
+  while(WiFi.status() != WL_CONNECTED){
+      Serial.print(".");
+      delay(100);
+  }
+
+  Serial.println("\nConnected to the WiFi network");
+
+  //handle mqtt connection
+  while (!mqttClient.connected()) 
+  {
+    if (mqttClient.connect("mtgDisplay")) 
+    {
+      Serial.println("Connected to mqtt");
+    } 
+    else 
+    {
+      Serial.print("failed with state ");
+      Serial.print(mqttClient.state());
+      delay(2000);
+    }
+  }
+  
 }
 
 int P1_health { 20 };
-int prev_power{ 1 };
+int prev_power{ log10(abs(P1_health)) };
 
 void loop() 
 {
@@ -43,12 +89,14 @@ void checkButtons()
     if(digitalRead(0)==0 && digitalRead(35)==1 )
     {
       P1_health++;
+      mqttClient.publish(topic, "+1");
       pressed = true;
     }
 
     if(digitalRead(0)==1 && digitalRead(35)==0 )
     {
       P1_health--;
+      mqttClient.publish(topic, "-1");
       pressed = true;
     }
   }
