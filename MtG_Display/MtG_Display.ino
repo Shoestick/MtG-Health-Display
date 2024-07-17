@@ -37,8 +37,8 @@ void setup()
   Serial.println("\nConnecting");
 
   while(WiFi.status() != WL_CONNECTED){
-      Serial.print(".");
-      delay(100);
+    Serial.print(".");
+    delay(100);
   }
 
   Serial.println("\nConnected to the WiFi network");
@@ -63,8 +63,26 @@ void setup()
 int P1_health { 20 };
 int prev_power{ log10(abs(P1_health)) };
 
+int currentTime { millis() };
+
 void loop() 
 {
+  if(currentTime + 2000 < millis())
+  {
+    if(mqttClient.connected())
+    {
+      Serial.printf("[MQTT]Connection stable %d\n", millis() / 2000);
+    }
+    else
+    {
+      Serial.print("[MQTT]Failed with state ");
+      Serial.print(mqttClient.state());
+      Serial.printf("%d", millis() / 2000);
+      mqttClient.connect("mtgLED");
+    }
+    currentTime = millis();
+  }
+
   //stops smaller numbers from not removing larger numbers behind them
   int power { log10(abs(P1_health)) };
   if(prev_power != power)
@@ -86,17 +104,24 @@ void checkButtons()
 {
   if(!pressed)
   {
+    if(digitalRead(0)==0 && digitalRead(35)==0 )
+    {
+      P1_health = 20;
+      mqttClient.publish(topic, "=");
+
+      pressed = true;
+    }
     if(digitalRead(0)==0 && digitalRead(35)==1 )
     {
       P1_health++;
-      mqttClient.publish(topic, "+1");
+      mqttClient.publish(topic, "+");
       pressed = true;
     }
 
     if(digitalRead(0)==1 && digitalRead(35)==0 )
     {
       P1_health--;
-      mqttClient.publish(topic, "-1");
+      mqttClient.publish(topic, "-");
       pressed = true;
     }
   }

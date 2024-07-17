@@ -19,10 +19,7 @@ void setup()
 {
   Serial.begin(115200);
   strip.begin();
-  strip.fill((0,0,0));
   strip.show();
-
-  start();
 
   //set mqtt
   mqttClient.setServer(MQTT_BROKER_FQDN, port);
@@ -44,7 +41,7 @@ void setup()
   //handle mqtt connection
   while (!mqttClient.connected()) 
   {
-    if (mqttClient.connect("mtgDisplay")) 
+    if (mqttClient.connect("mtgLED")) 
     {
       Serial.println("Connected to mqtt");
     } 
@@ -83,15 +80,6 @@ void mqttCallback(char* topic, byte* payload, unsigned int length)
   {
     Serial.println("Message too long");
   }
-}
-
-int currentMillis { millis() };
-
-bool flip { 0 };
-
-void loop() 
-{
-  mqttClient.loop();
 }
 
 #define GREEN_HEALTH  20
@@ -145,4 +133,29 @@ void change_life(bool gain)
     strip.setPixelColor(i, GREEN_HEALTH_COLOUR);
   }
   strip.show();
+}
+
+int currentMillis { millis() };
+
+bool flip { 0 };
+
+void loop() 
+{
+  if(currentMillis + 2000 < millis())
+  {
+    if(mqttClient.connected())
+    {
+      Serial.printf("[MQTT]Connection stable %d\n", millis() / 2000);
+    }
+    else
+    {
+      Serial.print("[MQTT]Failed with state ");
+      Serial.print(mqttClient.state());
+      Serial.printf("%d\n", millis() / 2000);
+      mqttClient.connect("mtgLED");
+    }
+    currentMillis = millis();
+  }
+
+  mqttClient.loop();
 }
