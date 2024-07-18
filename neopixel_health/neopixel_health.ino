@@ -37,10 +37,15 @@ void wifi_check()
     if(WiFi.status() == WL_CONNECTED)
     {
       wifi_check_millis = millis() + 50;
+      //strip.setPixelColor(26, strip.Color(10, 10, 10));
+      //strip.show();
     }
     else
     {
       WiFi.disconnect(true);
+
+      //strip.setPixelColor(26, strip.Color(0, 0, 0));
+      //strip.show();
   
       WiFi.mode(WIFI_STA);
       WiFi.setAutoConnect(true);
@@ -61,10 +66,15 @@ void mqtt_check()
     if(WiFi.status() == WL_CONNECTED){
       if(mqttClient.connected())
       {
+        mqttClient.loop();
         mqtt_check_millis = millis() + 50;
+        //strip.setPixelColor(27, strip.Color(0, 0, 20));
+        //strip.show();
       }
       else
       {
+        //strip.setPixelColor(27, strip.Color(0, 0, 0));
+        //strip.show();
         if (!mqttClient.connect("mtgLED")) 
         {
           Serial.print("[MQTT] failed connection with state ");
@@ -169,8 +179,5 @@ bool flip { 0 };
 void loop() 
 {
   wifi_check();
-
   mqtt_check();
-
-  mqttClient.loop();
 }

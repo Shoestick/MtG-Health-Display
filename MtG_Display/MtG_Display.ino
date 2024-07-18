@@ -42,10 +42,12 @@ void wifi_check()
     if(WiFi.status() == WL_CONNECTED)
     {
       wifi_check_millis = millis() + 50;
+      //tft.fillCircle(15, 120, 10, TFT_BLACK);
     }
     else
     {
       WiFi.disconnect(true);
+      //tft.fillCircle(15, 120, 10, TFT_RED);
   
       WiFi.mode(WIFI_STA);
       WiFi.setAutoConnect(true);
@@ -67,16 +69,18 @@ void mqtt_check()
       if(mqttClient.connected())
       {
         mqtt_check_millis = millis() + 50;
+        //tft.fillCircle(15, 95, 10, TFT_BLUE);
       }
       else
       {
-        if (!mqttClient.connect("mtgLED")) 
+        //tft.fillCircle(15, 95, 10, TFT_RED);
+        if (!mqttClient.connect("mtgDisplay")) 
         {
           Serial.print("[MQTT] failed connection with state ");
           Serial.print(mqttClient.state());
           Serial.println(" ");
 
-          mqttClient.connect("mtgLED");
+          mqttClient.connect("mtgDisplay");
 
           mqtt_check_millis = millis() + 250;
         }
