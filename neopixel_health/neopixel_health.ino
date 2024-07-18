@@ -26,33 +26,59 @@ void setup()
   mqttClient.setCallback(mqttCallback);
 
   delay(1000);
+}
 
-  //handle wifi connection
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  Serial.println("\nConnecting");
+unsigned long wifi_check_millis { millis() };
 
-  while(WiFi.status() != WL_CONNECTED){
-      Serial.print(".");
-      delay(100);
-  }
-
-  Serial.println("\nConnected to the WiFi network");
-
-  //handle mqtt connection
-  while (!mqttClient.connected()) 
+void wifi_check()
+{
+  if(millis() > wifi_check_millis)
   {
-    if (mqttClient.connect("mtgLED")) 
+    if(WiFi.status() == WL_CONNECTED)
     {
-      Serial.println("Connected to mqtt");
-    } 
-    else 
+      wifi_check_millis = millis() + 50;
+    }
+    else
     {
-      Serial.print("failed with state ");
-      Serial.print(mqttClient.state());
-      delay(2000);
+      WiFi.disconnect(true);
+  
+      WiFi.mode(WIFI_STA);
+      WiFi.setAutoConnect(true);
+
+      WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+      Serial.println("[WIFI] connecting...");
+      wifi_check_millis = millis() + 250;
     }
   }
-  mqttClient.subscribe(topic_sub);
+}
+
+unsigned long mqtt_check_millis { millis() };
+
+void mqtt_check()
+{
+  if(millis() > mqtt_check_millis)
+  {
+    if(WiFi.status() == WL_CONNECTED){
+      if(mqttClient.connected())
+      {
+        mqtt_check_millis = millis() + 50;
+      }
+      else
+      {
+        if (!mqttClient.connect("mtgLED")) 
+        {
+          Serial.print("[MQTT] failed connection with state ");
+          Serial.print(mqttClient.state());
+          Serial.println(" ");
+
+          mqttClient.connect("mtgLED");
+
+          mqtt_check_millis = millis() + 250;
+        }
+        mqttClient.subscribe(topic_sub);
+      }
+    }
+  }
 }
 
 void mqttCallback(char* topic, byte* payload, unsigned int length)
@@ -63,22 +89,23 @@ void mqttCallback(char* topic, byte* payload, unsigned int length)
     {
       case '=':
         start();
+        Serial.println("[LED] start");
         break;
       case '+':
         change_life(1);
-        Serial.println("Health increased");
+        Serial.println("[LED] health increased");
         break;
       case '-':
         change_life(0);
-        Serial.println("Health decreased");
+        Serial.println("[LED] health decreased");
         break;
       default:
-        Serial.println("Recieved unkown character");
+        Serial.println("[LED] recieved unkown character");
     }
   }
   else
   {
-    Serial.println("Message too long");
+    Serial.println("[LED] message too long");
   }
 }
 
@@ -135,27 +162,15 @@ void change_life(bool gain)
   strip.show();
 }
 
-int currentMillis { millis() };
+unsigned long currentMillis { millis() };
 
 bool flip { 0 };
 
 void loop() 
 {
-  if(currentMillis + 2000 < millis())
-  {
-    if(mqttClient.connected())
-    {
-      Serial.printf("[MQTT]Connection stable %d\n", millis() / 2000);
-    }
-    else
-    {
-      Serial.print("[MQTT]Failed with state ");
-      Serial.print(mqttClient.state());
-      Serial.printf("%d\n", millis() / 2000);
-      mqttClient.connect("mtgLED");
-    }
-    currentMillis = millis();
-  }
+  wifi_check();
+
+  mqtt_check();
 
   mqttClient.loop();
 }

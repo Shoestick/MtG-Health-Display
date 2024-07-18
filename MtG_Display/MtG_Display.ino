@@ -31,74 +31,62 @@ void setup()
   mqttClient.setServer(MQTT_BROKER_FQDN, port);
 
   delay(1000);
-
-  //handle wifi connection
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  Serial.println("\nConnecting");
-
-  while(WiFi.status() != WL_CONNECTED){
-    Serial.print(".");
-    delay(100);
-  }
-
-  Serial.println("\nConnected to the WiFi network");
-
-  //handle mqtt connection
-  while (!mqttClient.connected()) 
-  {
-    if (mqttClient.connect("mtgDisplay")) 
-    {
-      Serial.println("Connected to mqtt");
-    } 
-    else 
-    {
-      Serial.print("failed with state ");
-      Serial.print(mqttClient.state());
-      delay(2000);
-    }
-  }
-  
 }
 
-int P1_health { 20 };
-int prev_power{ log10(abs(P1_health)) };
+unsigned long wifi_check_millis { millis() };
 
-int currentTime { millis() };
-
-void loop() 
+void wifi_check()
 {
-  if(currentTime + 2000 < millis())
+  if(millis() > wifi_check_millis)
   {
-    if(mqttClient.connected())
+    if(WiFi.status() == WL_CONNECTED)
     {
-      Serial.printf("[MQTT]Connection stable %d\n", millis() / 2000);
+      wifi_check_millis = millis() + 50;
     }
     else
     {
-      Serial.print("[MQTT]Failed with state ");
-      Serial.print(mqttClient.state());
-      Serial.printf("%d", millis() / 2000);
-      mqttClient.connect("mtgLED");
+      WiFi.disconnect(true);
+  
+      WiFi.mode(WIFI_STA);
+      WiFi.setAutoConnect(true);
+
+      WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+      Serial.println("[WIFI] connecting...");
+      wifi_check_millis = millis() + 250;
     }
-    currentTime = millis();
   }
+}
 
-  //stops smaller numbers from not removing larger numbers behind them
-  int power { log10(abs(P1_health)) };
-  if(prev_power != power)
+unsigned long mqtt_check_millis { millis() };
+
+void mqtt_check()
+{
+  if(millis() > mqtt_check_millis)
   {
-    tft.fillScreen(TFT_RED);
-    prev_power = power;
+    if(WiFi.status() == WL_CONNECTED){
+      if(mqttClient.connected())
+      {
+        mqtt_check_millis = millis() + 50;
+      }
+      else
+      {
+        if (!mqttClient.connect("mtgLED")) 
+        {
+          Serial.print("[MQTT] failed connection with state ");
+          Serial.print(mqttClient.state());
+          Serial.println(" ");
+
+          mqttClient.connect("mtgLED");
+
+          mqtt_check_millis = millis() + 250;
+        }
+      }
+    }
   }
-
-  tft.setTextDatum(MC_DATUM);
-  tft.setTextColor(TFT_BLACK, TFT_RED);
-  tft.drawString(String(P1_health), tft.width() / 2, tft.height() / 2, 8);
-
-  checkButtons();
 }
 
 bool pressed { false };
+int P1_health { 20 };
 
 void checkButtons()
 {
@@ -108,7 +96,7 @@ void checkButtons()
     {
       P1_health = 20;
       mqttClient.publish(topic, "=");
-
+      
       pressed = true;
     }
     if(digitalRead(0)==0 && digitalRead(35)==1 )
@@ -128,4 +116,28 @@ void checkButtons()
   
   if(digitalRead(0)==1 && digitalRead(35)==1 )
     pressed = false;
+}
+
+int prev_power{ log10(abs(P1_health)) };
+
+int currentTime { millis() };
+
+void loop() 
+{
+  wifi_check();
+  mqtt_check();
+
+  //stops smaller numbers from not removing larger numbers behind them
+  int power { log10(abs(P1_health)) };
+  if(prev_power != power)
+  {
+    tft.fillScreen(TFT_RED);
+    prev_power = power;
+  }
+
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(TFT_BLACK, TFT_RED);
+  tft.drawString(String(P1_health), tft.width() / 2, tft.height() / 2, 8);
+
+  checkButtons();
 }
