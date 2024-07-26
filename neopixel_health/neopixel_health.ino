@@ -13,8 +13,6 @@ PubSubClient mqttClient(wifiClient);
 constexpr uint16_t port { 1883 };
 const char *topic_sub = "mtg/health";
 
-int health { 20 };
-
 void setup() 
 {
   Serial.begin(115200);
@@ -91,6 +89,8 @@ void mqtt_check()
   }
 }
 
+bool started { 0 };
+
 void mqttCallback(char* topic, byte* payload, unsigned int length)
 {
   if(length < 2)
@@ -99,15 +99,22 @@ void mqttCallback(char* topic, byte* payload, unsigned int length)
     {
       case '=':
         start();
+        started = true;
         Serial.println("[LED] start");
         break;
       case '+':
-        change_life(1);
-        Serial.println("[LED] health increased");
+        if(started)
+        {
+          change_life(1);
+          Serial.println("[LED] health increased");
+        }
         break;
       case '-':
-        change_life(0);
-        Serial.println("[LED] health decreased");
+        if(started)
+        {
+          change_life(0);
+          Serial.println("[LED] health decreased");
+        }
         break;
       default:
         Serial.println("[LED] recieved unkown character");
@@ -119,23 +126,31 @@ void mqttCallback(char* topic, byte* payload, unsigned int length)
   }
 }
 
+int health { 20 };
+
 #define GREEN_HEALTH  20
 #define RED_HEALTH    20
 
 #define GREEN_HEALTH_COLOUR strip.Color(0, GREEN_HEALTH, 0)
 #define RED_HEALTH_COLOUR   strip.Color(RED_HEALTH, 0, 0)
 
-#define LIFE_CHANGE_TIME 100
+auto health_colour { strip.Color(0, GREEN_HEALTH, 0) };
 
 void start()
 {
   for(int i { 0 }; i < health; ++i)
   {
-    strip.setPixelColor(i, GREEN_HEALTH_COLOUR);
+    strip.setPixelColor(i, health_colour);
     strip.show();
     delay(20);
   }
 }
+
+#define LIFE_CHANGE_TIME 100
+#define FULLY_DAMAGED_HEALTH 5
+#define STEPS_TO_DAMAGED_HEALTH 5
+#define DAMAGED_HEALTH STEPS_TO_DAMAGED_HEALTH + FULLY_DAMAGED_HEALTH
+#define HEALTH_DAMAGED_PER_STEP RED_HEALTH / STEPS_TO_DAMAGED_HEALTH
 
 void change_life(bool gain)
 {
@@ -165,16 +180,27 @@ void change_life(bool gain)
   
   strip.clear();
 
+  if(health <= FULLY_DAMAGED_HEALTH)
+  {
+    health_colour = strip.Color(RED_HEALTH, 0, 0);
+  }
+  else if(health < DAMAGED_HEALTH)
+  {
+    int red { min(HEALTH_DAMAGED_PER_STEP * (DAMAGED_HEALTH - health), RED_HEALTH) };
+    int green { max(GREEN_HEALTH - abs(HEALTH_DAMAGED_PER_STEP * (DAMAGED_HEALTH - health)), 0) };
+    health_colour = strip.Color(red, green, 0);
+  }
+  else
+  {
+    health_colour = strip.Color(0, GREEN_HEALTH, 0);
+  }
+
   for(int i { 0 }; i < health; ++i)
   {
-    strip.setPixelColor(i, GREEN_HEALTH_COLOUR);
+    strip.setPixelColor(i, health_colour);
   }
   strip.show();
 }
-
-unsigned long currentMillis { millis() };
-
-bool flip { 0 };
 
 void loop() 
 {
