@@ -2,17 +2,16 @@
 #include <TFT_eSPI.h>
 #include <SPI.h>
 #include <PubSubClient.h>
+#include "MagicMedieval_96.h"
 #include "WiFi.h"
 
 TFT_eSPI tft=TFT_eSPI();
+TFT_eSprite back=TFT_eSprite(&tft);
+TFT_eSprite txt=TFT_eSprite(&tft);
 WiFiClient wifiClient;
 PubSubClient mqttClient(wifiClient);
 
-//#define WIFI_SSID
-//#define WIFI_PASSWORD
-
-//#define MQTT_BROKER
-//#define MQTT_BROKER_FQDN
+#define magic MagicMedieval_96
 
 constexpr uint16_t port { 1883 };
 const char *topic = "mtg/health";
@@ -21,8 +20,20 @@ void setup()
 {
   Serial.begin(115200);
   tft.init();
-  tft.setRotation( 3 ); // 3 is landscape mode
-  tft.fillScreen(TFT_RED);
+  tft.fillScreen(TFT_BLACK);
+
+  //create background sprite
+  back.createSprite(tft.width(), tft.height());
+  back.fillSprite(TFT_RED);
+  back.setPivot(back.width() / 2, (back.height() - txt.height()) / 2);
+  
+  //create text sprite
+  txt.setColorDepth(16);
+  txt.createSprite(tft.width(), tft.width());
+  txt.fillSprite(TFT_RED);
+  txt.loadFont(magic);
+  txt.setTextDatum(MC_DATUM);
+  txt.setTextColor(TFT_BLACK);
 
   pinMode(0, INPUT_PULLUP);
   pinMode(35, INPUT_PULLUP);
@@ -122,26 +133,18 @@ void checkButtons()
     pressed = false;
 }
 
-int prev_power{ log10(abs(P1_health)) };
-
-int currentTime { millis() };
-
 void loop() 
 {
   wifi_check();
   mqtt_check();
 
-  //stops smaller numbers from not removing larger numbers behind them
-  int power { log10(abs(P1_health)) };
-  if(prev_power != power)
-  {
-    tft.fillScreen(TFT_RED);
-    prev_power = power;
-  }
+  back.fillSprite(TFT_RED);
+  txt.fillSprite(TFT_RED);
+  txt.drawNumber(P1_health, txt.width() / 2, txt.height() / 2);
 
-  tft.setTextDatum(MC_DATUM);
-  tft.setTextColor(TFT_BLACK, TFT_RED);
-  tft.drawString(String(P1_health), tft.width() / 2, tft.height() / 2, 8);
+  txt.pushRotated(&back, 270);
+
+  back.pushSprite(0, 0);
 
   checkButtons();
 }
