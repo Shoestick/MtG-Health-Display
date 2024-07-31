@@ -100,37 +100,88 @@ void mqtt_check()
   }
 }
 
-bool pressed { false };
-int P1_health { 20 };
+#define flushBufferTime 50 
+
+bool pressA   { false };
+bool pressB   { false };
+bool pressed  { false };
+bool waitingToSendCommand { false };
+unsigned long sendBufferMillis { millis() };
+
+int health { 20 };
+
+void sendCommand()
+{
+  if(pressA && pressB)
+  {
+    health = 20;
+    mqttClient.publish(topic, "=");
+  }
+  else if(pressA && !pressB)
+  {
+    health++;
+    mqttClient.publish(topic, "+");
+  }
+  else if(!pressA && pressB)
+  {
+    health--;
+    mqttClient.publish(topic, "-");
+  }
+
+  waitingToSendCommand = false;
+}
+
+void updateButtonFlags()
+{
+  //check what buttons are being held
+  if(digitalRead(0)==0 && digitalRead(35)==0 )
+  {
+    pressA = true;
+    pressB = true;
+  }
+  if(digitalRead(0)==0 && digitalRead(35)==1 )
+  {
+    pressA = true;
+  }
+  if(digitalRead(0)==1 && digitalRead(35)==0 )
+  {
+    pressB = true;
+  }
+}
 
 void checkButtons()
 {
-  if(!pressed)
+  if(pressed)
   {
-    if(digitalRead(0)==0 && digitalRead(35)==0 )
+    if( digitalRead(0)==1 && digitalRead(35)==1 )
     {
-      P1_health = 20;
-      mqttClient.publish(topic, "=");
-      
-      pressed = true;
+      if(waitingToSendCommand)
+        sendCommand();
+  
+      pressed = false;
+      pressA = false;
+      pressB = false;
     }
-    if(digitalRead(0)==0 && digitalRead(35)==1 )
+    else if( waitingToSendCommand && sendBufferMillis < millis() )
     {
-      P1_health++;
-      mqttClient.publish(topic, "+");
-      pressed = true;
+      sendCommand();
     }
+    else
+    {
+      updateButtonFlags();
+    } 
+  }
+  else
+  {
+    if( !(digitalRead(0)==1 && digitalRead(35)==1) )
+    {
+      waitingToSendCommand = true;
+      pressed = true;
+      sendBufferMillis = millis() + flushBufferTime;
 
-    if(digitalRead(0)==1 && digitalRead(35)==0 )
-    {
-      P1_health--;
-      mqttClient.publish(topic, "-");
-      pressed = true;
+      updateButtonFlags();
     }
   }
-  
-  if(digitalRead(0)==1 && digitalRead(35)==1 )
-    pressed = false;
 }
 
 void loop() 
@@ -140,7 +191,7 @@ void loop()
 
   back.fillSprite(TFT_RED);
   txt.fillSprite(TFT_RED);
-  txt.drawNumber(P1_health, txt.width() / 2, txt.height() / 2);
+  txt.drawNumber(health, txt.width() / 2, txt.height() / 2);
 
   txt.pushRotated(&back, 270);
 
